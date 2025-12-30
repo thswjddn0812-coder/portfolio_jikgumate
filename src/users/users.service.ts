@@ -43,7 +43,7 @@ export class UsersService {
 
   async uploadProfileImage(userId: number, file: Express.Multer.File) {
     const fileName = `${userId}_${Date.now()}_${file.originalname}`;
-    const { supabase } = require('../../../supabase');
+    const { supabase } = require('../supabase');
     const { data, error } = await supabase.storage
       .from('photo')
       .upload(fileName, file.buffer, {
