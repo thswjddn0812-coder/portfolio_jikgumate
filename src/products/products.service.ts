@@ -35,9 +35,16 @@ export class ProductsService {
     });
 
     try {
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1280, height: 800 });
-      await page.setUserAgent(this.USER_AGENT);
+      // 리소스 차단 설정 (메모리 절약 및 속도 향상)
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        const resourceType = req.resourceType();
+        if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+          req.abort();
+        } else {
+          req.continue();
+        }
+      });
 
       // 알리익스프레스 지역/화폐/언어 강제 설정 (한국/원화)
       await page.setCookie({
