@@ -46,7 +46,11 @@ export class ProductsService {
         domain: '.aliexpress.com',
       });
 
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+      // Render 환경이 느려서 타임아웃 발생함 -> 대기 조건 완화 ('domcontentloaded') 및 시간 연장 (60초)
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+      // JSON 데이터가 로드될 때까지 잠시 대기 (안전장치)
+      await new Promise(r => setTimeout(r, 3000));
 
       const data = await this.extractAliExpressData(page);
       
