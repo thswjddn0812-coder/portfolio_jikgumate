@@ -35,6 +35,10 @@ export class ProductsService {
     });
 
     try {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1280, height: 800 });
+      await page.setUserAgent(this.USER_AGENT);
+
       // 리소스 차단 설정 (메모리 절약 및 속도 향상)
       await page.setRequestInterception(true);
       page.on('request', (req) => {
