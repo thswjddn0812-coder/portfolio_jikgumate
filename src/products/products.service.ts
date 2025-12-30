@@ -22,7 +22,15 @@ export class ProductsService {
 
     const browser = await puppeteer.launch({
       headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage', // Docker 환경에서 필수 (메모리 부족 방지)
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+      ],
+      ignoreHTTPSErrors: true,
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     });
 
@@ -30,6 +38,14 @@ export class ProductsService {
       const page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 800 });
       await page.setUserAgent(this.USER_AGENT);
+
+      // 알리익스프레스 지역/화폐/언어 강제 설정 (한국/원화)
+      await page.setCookie({
+        name: 'aep_usuc_f',
+        value: 'site=kor&c_tp=KRW&region=KR&b_locale=ko_KR',
+        domain: '.aliexpress.com',
+      });
+
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
       const data = await this.extractAliExpressData(page);
