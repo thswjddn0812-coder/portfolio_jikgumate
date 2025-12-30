@@ -75,12 +75,44 @@ export class ProductsService {
   }
 
   private async extractAliExpressData(page: any) {
+    // 0. Global Variable Extraction (Most Reliable)
+    try {
+      const runParams = await page.evaluate(() => {
+        // @ts-ignore
+        const params = window.runParams;
+        if (!params) return null;
+        
+        // 데이터 구조가 변할 수 있으므로 여러 경로 탐색
+        const data = params.data;
+        if (!data) return null;
+
+        return {
+          title: data.productInfoComponent?.subject || data.titleModule?.subject,
+          image: data.imageModule?.imagePathList?.[0] || data.productInfoComponent?.imagePathList?.[0],
+          price: data.priceComponent?.discountPrice?.minActivityAmount?.value || 
+                 data.priceComponent?.origPrice?.minAmount?.value,
+          description: data.productDescComponent?.descriptionUrl // 이건 URL이라 별도 처리가 필요하지만 일단 패스
+        };
+      });
+
+      if (runParams && runParams.title) {
+        return {
+          title: runParams.title,
+          price: this.parsePrice(String(runParams.price || 0)),
+          image: runParams.image,
+          desc: '', // 설명은 복잡해서 생략
+        };
+      }
+    } catch (e) {
+      console.log('RunParams extraction failed', e);
+    }
+
     let title = '';
     let price = 0;
     let image = '';
     let description = '';
 
-    // 1. Try LD-JSON (Best for AliExpress)
+    // 1. Try LD-JSON
     const jsonLd = await page.$eval('script[type="application/ld+json"]', (el) => el.textContent).catch(() => null);
     if (jsonLd) {
       try {
@@ -95,7 +127,18 @@ export class ProductsService {
       }
     }
 
-    // 2. Fallback Selectors
+    // 2. OpenGraph Meta Tags (Standard Fallback)
+    if (!title) {
+      title = await page.$eval('meta[property="og:title"]', (el) => el.content).catch(() => '');
+    }
+    if (!image) {
+      image = await page.$eval('meta[property="og:image"]', (el) => el.content).catch(() => '');
+    }
+    if (!description) {
+      description = await page.$eval('meta[property="og:description"]', (el) => el.content).catch(() => '');
+    }
+
+    // 3. CSS Selectors (Last Resort)
     if (!title) {
         title = await page.$eval('.product-title-text', (el) => el.textContent).catch(() => '');
     }
@@ -106,10 +149,10 @@ export class ProductsService {
     if (!image) {
         image = await page.$eval('.product-image-current', (el) => el.getAttribute('src')).catch(() => '');
     }
-
-    // 3. Common Meta Tags (Last Resort for Description/Image)
-    if (!description) {
-        description = await page.$eval('meta[property="og:description"]', (el) => el.content).catch(() => '');
+    
+    // Fallback: title if nothing else works (document title)
+    if (!title) {
+      title = await page.title();
     }
     
     return { title: title?.trim(), price, image, desc: description?.trim() };
