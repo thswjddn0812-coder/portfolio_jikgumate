@@ -50,17 +50,26 @@ export class ProductsService {
       });
       await page.setUserAgent(this.USER_AGENT);
 
-      // 3. 쿠키 설정 (한국/원화)
-      await page.setCookie({
-        name: 'aep_usuc_f',
-        value: 'site=kor&c_tp=KRW&region=KR&b_locale=ko_KR',
-        domain: '.aliexpress.com',
-      });
-      await page.setCookie({
-        name: 'xman_us_f',
-        value: 'x_l=0&x_locale=ko_KR',
-        domain: '.aliexpress.com',
-      });
+      // 3. 쿠키 설정 (한국/원화) - 더욱 강력하게 설정
+      // aep_usuc_f: region=KR, site=kor, c_tp=KRW
+      // intl_locale: ko_KR
+      await page.setCookie(
+        {
+          name: 'aep_usuc_f',
+          value: 'site=kor&c_tp=KRW&region=KR&b_locale=ko_KR',
+          domain: '.aliexpress.com',
+        },
+        {
+          name: 'xman_us_f',
+          value: 'x_l=0&x_locale=ko_KR',
+          domain: '.aliexpress.com',
+        },
+        {
+          name: 'intl_locale',
+          value: 'ko_KR',
+          domain: '.aliexpress.com',
+        },
+      );
 
       // 4. 리소스 차단 (속도 최적화)
       await page.setRequestInterception(true);
@@ -244,6 +253,8 @@ export class ProductsService {
             'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
           'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
           Referer: 'https://www.google.com/',
+          // 아마존 등에서 한국/원화 설정을 강제하기 위한 쿠키
+          Cookie: 'i18n-prefs=KRW; lc-main=ko_KR; sp-cdn="L5Z9:KR";',
         },
       });
 
