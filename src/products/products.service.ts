@@ -143,7 +143,48 @@ export class ProductsService {
   }
 
   private async extractAliExpressData(page: any) {
-    // 0. Global Variable Extraction (Most Reliable)
+    let title = '';
+    let price = 0;
+    let image = '';
+    let description = '';
+
+    // 1. Try LD-JSON (Most Reliable and Standard)
+    try {
+      const jsonLd = await page
+        .$eval('script[type="application/ld+json"]', (el) => el.textContent)
+        .catch(() => null);
+
+      if (jsonLd) {
+        const parsed = JSON.parse(jsonLd);
+        const data = Array.isArray(parsed) ? parsed[0] : parsed;
+
+        title = data.name || '';
+        image = Array.isArray(data.image) ? data.image[0] : data.image || '';
+        description = data.description || '';
+
+        // Price Extraction
+        if (data.offers) {
+          const offers = Array.isArray(data.offers)
+            ? data.offers[0]
+            : data.offers;
+          // 지원하는 통화(KRW)인지 확인하거나 그냥 숫자만 추출
+          price = parseInt(offers.price, 10) || 0;
+        }
+
+        if (title && price > 0) {
+          return {
+            title: title.trim(),
+            price,
+            image,
+            desc: description.trim(),
+          };
+        }
+      }
+    } catch (e) {
+      console.log('AliExpress JSON parse error', e);
+    }
+
+    // 2. Global Variable Extraction (Fallback)
     try {
       const runParams = await page.evaluate(() => {
         // @ts-ignore
@@ -163,7 +204,7 @@ export class ProductsService {
           price:
             data.priceComponent?.discountPrice?.minActivityAmount?.value ||
             data.priceComponent?.origPrice?.minAmount?.value,
-          description: data.productDescComponent?.descriptionUrl, // 이건 URL이라 별도 처리가 필요하지만 일단 패스
+          description: data.productDescComponent?.descriptionUrl,
         };
       });
 
@@ -172,36 +213,14 @@ export class ProductsService {
           title: runParams.title,
           price: this.parsePrice(String(runParams.price || 0)),
           image: runParams.image,
-          desc: '', // 설명은 복잡해서 생략
+          desc: '',
         };
       }
     } catch (e) {
       console.log('RunParams extraction failed', e);
     }
 
-    let title = '';
-    let price = 0;
-    let image = '';
-    let description = '';
-
-    // 1. Try LD-JSON
-    const jsonLd = await page
-      .$eval('script[type="application/ld+json"]', (el) => el.textContent)
-      .catch(() => null);
-    if (jsonLd) {
-      try {
-        const parsed = JSON.parse(jsonLd);
-        const data = Array.isArray(parsed) ? parsed[0] : parsed;
-        title = data.name;
-        image = Array.isArray(data.image) ? data.image[0] : data.image;
-        price = parseInt(data.offers?.price, 10) || 0;
-        description = data.description;
-      } catch (e) {
-        console.log('AliExpress JSON parse error', e);
-      }
-    }
-
-    // 2. OpenGraph Meta Tags (Standard Fallback)
+    // 3. OpenGraph Meta Tags (Standard Fallback)
     if (!title) {
       title = await page
         .$eval('meta[property="og:title"]', (el) => el.content)
@@ -218,22 +237,34 @@ export class ProductsService {
         .catch(() => '');
     }
 
-    // 3. CSS Selectors (Last Resort)
+    // 4. CSS Selectors (Last Resort - Updated Selectors)
     if (!title) {
       title = await page
-        .$eval('.product-title-text', (el) => el.textContent)
+        .$eval(
+          'h1[class*="title"], .product-title-text',
+          (el) => el.textContent,
+        )
         .catch(() => '');
     }
     if (!price) {
-      const priceText = await page
-        .$eval('.product-price-current', (el) => el.textContent)
-        .catch(() => '0');
-      price = this.parsePrice(priceText);
-    }
-    if (!image) {
-      image = await page
-        .$eval('.product-image-current', (el) => el.getAttribute('src'))
-        .catch(() => '');
+      // 다양한 가격 선택자 시도
+      const priceSelectors = [
+        '.product-price-current',
+        '.product-price-value',
+        '[class*="price"]',
+        '[class*="Price"]',
+      ];
+
+      for (const selector of priceSelectors) {
+        const priceText = await page
+          .$eval(selector, (el) => el.innerText)
+          .catch(() => '');
+        const extractedPrice = this.parsePrice(priceText);
+        if (extractedPrice > 0) {
+          price = extractedPrice;
+          break;
+        }
+      }
     }
 
     // Fallback: title if nothing else works (document title)
