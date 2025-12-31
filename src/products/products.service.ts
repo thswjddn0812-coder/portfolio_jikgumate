@@ -98,10 +98,22 @@ export class ProductsService {
       await new Promise((r) => setTimeout(r, Math.random() * 1000 + 500));
 
       // 6. 상품 페이지 이동
+      // 6. 상품 페이지 이동
+      // networkidle2는 타임아웃 발생 가능성이 높으므로 domcontentloaded로 변경
       const response = await page.goto(cleanUrl, {
-        waitUntil: 'networkidle2',
+        waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
+
+      // 주요 컨텐츠 로딩 대기
+      try {
+        await page
+          .waitForSelector('script[type="application/ld+json"]', {
+            timeout: 5000,
+          })
+          .catch(() => {});
+        await page.waitForSelector('body', { timeout: 5000 }).catch(() => {});
+      } catch (e) {}
 
       // 404 및 차단 확인
       const status = response?.status();
