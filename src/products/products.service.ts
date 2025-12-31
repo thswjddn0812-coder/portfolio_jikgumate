@@ -86,13 +86,14 @@ export class ProductsService {
       });
 
       // 주요 컨텐츠 로딩 대기
+      // 주요 컨텐츠 로딩 대기
+      // 주요 컨텐츠 로딩 대기 (속도 개선을 위해 타임아웃 1초로 단축, 실패해도 진행)
       try {
         await page
           .waitForSelector('script[type="application/ld+json"]', {
-            timeout: 5000,
+            timeout: 1000,
           })
           .catch(() => {});
-        await page.waitForSelector('body', { timeout: 5000 }).catch(() => {});
       } catch (e) {}
 
       // 404 및 차단 확인
@@ -263,6 +264,37 @@ export class ProductsService {
     if (!title) {
       title = await page.title();
     }
+
+    // 5. Regex Search (Last Resort for Price) - 전체 텍스트에서 가격 패턴 검색
+    if (!price) {
+      try {
+        const bodyText = await page.$eval('body', (el) => el.innerText);
+        // "100,000원", "₩100,000", "KRW 100,000" 패턴 검색
+        const pricePatterns = [
+          /₩\s*([\d,]+)/,
+          /KRW\s*([\d,]+)/,
+          /([\d,]+)\s*원/,
+        ];
+
+        for (const pattern of pricePatterns) {
+          const match = bodyText.match(pattern);
+          if (match) {
+            const extracted = this.parsePrice(match[1]);
+            if (extracted > 0) {
+              price = extracted;
+              console.log(`[Price Fallback] Found price via regex: ${price}`);
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Regex price search failed', e);
+      }
+    }
+
+    console.log(
+      `[Extracted Data] Title: ${title?.substring(0, 30)}..., Price: ${price}, Image Found: ${!!image}`,
+    );
 
     return { title: title?.trim(), price, image, desc: description?.trim() };
   }
