@@ -71,28 +71,8 @@ export class ProductsService {
         },
       );
 
-      // 4. 리소스 차단 (속도 최적화)
-      await page.setRequestInterception(true);
-      page.on('request', (req) => {
-        const resourceType = req.resourceType();
-        if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
-          req.abort();
-        } else {
-          req.continue();
-        }
-      });
-
-      // 5. 메인 페이지 먼저 방문 (봇 탐지 우회 시도)
-      // 메인 페이지는 빠르게 로드만 하고 넘어감
-      try {
-        await page.goto('https://ko.aliexpress.com/', {
-          waitUntil: 'domcontentloaded',
-          timeout: 15000,
-        });
-      } catch (e) {
-        // 메인 페이지 로드 실패해도 상품 페이지 시도
-        console.log('Main page load skipped or failed', e.message);
-      }
+      // 4. 리소스 차단 제거 (가끔 로딩 지연 원인이 됨)
+      // 5. 메인 페이지 방문 제거 (타임아웃 원인 제거)
 
       // 짧은 랜덤 대기
       await new Promise((r) => setTimeout(r, Math.random() * 1000 + 500));
@@ -305,8 +285,17 @@ export class ProductsService {
 
       const title =
         $('meta[property="og:title"]').attr('content') || $('title').text();
-      const image = $('meta[property="og:image"]').attr('content');
+      let image = $('meta[property="og:image"]').attr('content');
       const description = $('meta[property="og:description"]').attr('content');
+
+      // Amazon Image Fallback
+      if ((!image || image.includes('captcha')) && url.includes('amazon')) {
+        image =
+          $('#landingImage').attr('data-old-hires') ||
+          $('#landingImage').attr('src') ||
+          $('#imgBlkFront').attr('src') ||
+          $('.a-dynamic-image').first().attr('src');
+      }
 
       // Price Extraction Strategies
       let priceText =
