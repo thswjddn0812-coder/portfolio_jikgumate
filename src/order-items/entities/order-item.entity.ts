@@ -25,9 +25,6 @@ export class OrderItems {
   @Column('int', { name: 'quantity', default: () => "'1'" })
   quantity: number;
 
-  @Column('varchar', { name: 'option_detail', nullable: true, length: 255 })
-  optionDetail: string | null;
-
   @ManyToOne(() => Orders, (orders) => orders.orderItems, {
     onDelete: 'CASCADE',
     onUpdate: 'NO ACTION',

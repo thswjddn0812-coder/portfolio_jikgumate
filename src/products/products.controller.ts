@@ -15,15 +15,27 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AdminGuardGuard } from 'src/common/guard/admin-guard.guard';
 import { AuthGuard } from '@nestjs/passport';
-@UseGuards(AuthGuard('jwt'), AdminGuardGuard)
 @ApiTags('Products')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Get('analyze')
-  async analyzeProduct(@Query('url') url: string) {
-    return await this.productsService.getProductInfo(url);
+  @Post('analyze')
+  @ApiOperation({
+    summary: '상품 분석 및 저장',
+    description:
+      'URL을 입력받아 상품 정보를 크롤링하고, DB에 저장한 뒤 정보를 반환합니다. 이미 존재하는 상품이면 DB 정보를 반환합니다. (Body 또는 Query 파라미터로 url 전달 가능)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: '상품 분석 및 저장 성공 (productId 포함)',
+  })
+  async analyzeProduct(
+    @Body('url') bodyUrl: string,
+    @Query('url') queryUrl: string,
+  ) {
+    const url = bodyUrl || queryUrl;
+    return await this.productsService.analyzeAndCreate(url);
   }
 
   @Post()
