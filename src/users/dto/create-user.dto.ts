@@ -38,7 +38,7 @@ export class CreateUserDto {
   })
   @IsString()
   @IsOptional()
-  defaultAddress?: string;
+  default_address?: string;
 
   @ApiProperty({
     description: '개인통관고유부호',
