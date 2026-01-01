@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CreateOrderItemDto {
+export class CreateOrderItemSubDto {
   @ApiProperty({ description: '상품 ID', example: 1 })
   @IsNumber()
   @IsNotEmpty()
@@ -57,11 +57,11 @@ export class ShippingDetailsDto {
 }
 
 export class CreateOrderDto {
-  @ApiProperty({ type: [CreateOrderItemDto], description: '주문 상품 목록' })
+  @ApiProperty({ type: [CreateOrderItemSubDto], description: '주문 상품 목록' })
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateOrderItemDto)
-  items: CreateOrderItemDto[];
+  @Type(() => CreateOrderItemSubDto)
+  items: CreateOrderItemSubDto[];
 
   @ApiProperty({ type: ShippingDetailsDto, description: '배송 정보' })
   @ValidateNested()

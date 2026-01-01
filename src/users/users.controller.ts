@@ -59,4 +59,18 @@ export class UsersController {
   findOne(@Param('email') email: string) {
     return this.usersService.findOneByEmail(email);
   }
+  @Get('all')
+  @UseGuards(AdminGuardGuard)
+  @ApiOperation({
+    summary: '전체 사용자 조회',
+    description: '모든 사용자의 정보를 조회합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '사용자 조회 성공',
+    type: [CreateUserDto],
+  })
+  findAll() {
+    return this.usersService.findAll();
+  }
 }
