@@ -23,6 +23,10 @@ export class Users {
     comment: '0: 일반유저, 1: 관리자',
     width: 1,
     default: () => "'0'",
+    transformer: {
+      from: (val: number | null) => val === 1,
+      to: (val: boolean) => (val ? 1 : 0),
+    },
   })
   isAdmin: boolean | null;
 

@@ -51,8 +51,8 @@ export class AuthController {
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    // Note: In a real app, use LocalGuard to validate credentials and populate req.user
-    // Here implementing manual validation for simplicity as per previous context or assuming pre-validation
+    // 참고: 실제 앱에서는 LocalGuard를 사용하여 자격 증명을 검증하고 req.user를 채워야 합니다.
+    // 여기서는 간단하게 수동 검증을 구현했습니다.
     const user = await this.authService.validateUser(
       loginDto.email,
       loginDto.password,
@@ -67,7 +67,7 @@ export class AuthController {
     res.cookie('Refresh', tokens.refreshToken, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      // secure: true, // Enable in production with HTTPS
+      // secure: true, // 프로덕션 환경(HTTPS)에서 활성화 필요
     });
 
     return { accessToken: tokens.accessToken };

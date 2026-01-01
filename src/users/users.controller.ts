@@ -13,6 +13,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AdminGuardGuard } from 'src/common/guard/admin-guard.guard';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('users')
 export class UsersController {
@@ -46,6 +47,21 @@ export class UsersController {
     return this.usersService.update(email, updateUserDto);
   }
 
+  @Get('all')
+  @UseGuards(AuthGuard('jwt'), AdminGuardGuard)
+  @ApiOperation({
+    summary: '전체 사용자 조회',
+    description: '모든 사용자의 정보를 조회합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '사용자 조회 성공',
+    type: [CreateUserDto],
+  })
+  findAll() {
+    return this.usersService.findAll();
+  }
+
   @Get(':email')
   @ApiOperation({
     summary: '사용자 조회',
@@ -58,19 +74,5 @@ export class UsersController {
   })
   findOne(@Param('email') email: string) {
     return this.usersService.findOneByEmail(email);
-  }
-  @Get('all')
-  @UseGuards(AdminGuardGuard)
-  @ApiOperation({
-    summary: '전체 사용자 조회',
-    description: '모든 사용자의 정보를 조회합니다.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: '사용자 조회 성공',
-    type: [CreateUserDto],
-  })
-  findAll() {
-    return this.usersService.findAll();
   }
 }

@@ -61,7 +61,16 @@ export class UsersService {
     await this.usersRepository.update(userId, { profileImageUrl: publicUrl });
     return { profileImageUrl: publicUrl };
   }
-  async findAll(){
-    return await this.usersRepository.find();
+  async findAll() {
+    return await this.usersRepository.find({
+      select: [
+        'email',
+        'isAdmin',
+        'pcccNumber',
+        'defaultAddress',
+        'createdAt',
+        'profileImageUrl',
+      ],
+    });
   }
 }

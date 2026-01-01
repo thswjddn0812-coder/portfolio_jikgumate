@@ -75,7 +75,7 @@ export class AuthService {
   async updateRefreshTokens(userId: number, rt: string) {
     const hash = await bcrypt.hash(rt, 10);
     await this.usersService.updateHashedRefreshToken(userId, hash);
-    await this.refreshTokensService.removeByUserId(userId); // Remove old tokens (optional: keep history?)
+    await this.refreshTokensService.removeByUserId(userId); // 이전 토큰 제거 (선택사항: 히스토리 보관?)
     await this.refreshTokensService.create(userId, rt);
   }
 
@@ -83,11 +83,11 @@ export class AuthService {
     const [at, rt] = await Promise.all([
       this.jwtService.signAsync(
         { sub: userId, email, is_admin: isAdmin },
-        { secret: 'at-secret', expiresIn: '10m' }, // TODO: Env
+        { secret: 'at-secret', expiresIn: '10m' }, // TODO: 환경변수로 변경
       ),
       this.jwtService.signAsync(
         { sub: userId, email, is_admin: isAdmin },
-        { secret: 'rt-secret', expiresIn: '1h' }, // TODO: Env
+        { secret: 'rt-secret', expiresIn: '1h' }, // TODO: 환경변수로 변경
       ),
     ]);
 

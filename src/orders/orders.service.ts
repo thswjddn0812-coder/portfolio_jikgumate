@@ -35,7 +35,7 @@ export class OrdersService {
       let totalAmount = 0;
       const orderItemsToSave: Partial<OrderItems>[] = [];
 
-      // 1. Calculate Total & Prepare Items
+      // 1. 총액 계산 및 주문 항목 준비
       for (const item of createOrderDto.items) {
         const product = await this.productsRepository.findOne({
           where: { productId: item.productId },
@@ -55,7 +55,7 @@ export class OrdersService {
         });
       }
 
-      // 2. Create Order
+      // 2. 주문 생성
       const newOrder = queryRunner.manager.create(Orders, {
         userId,
         totalAmount: totalAmount.toFixed(2),
@@ -63,7 +63,7 @@ export class OrdersService {
       });
       const savedOrder = await queryRunner.manager.save(Orders, newOrder);
 
-      // 3. Create OrderItems
+      // 3. 주문 항목(OrderItems) 생성 및 저장
       for (const item of orderItemsToSave) {
         await queryRunner.manager.save(OrderItems, {
           ...item,
@@ -71,7 +71,7 @@ export class OrdersService {
         });
       }
 
-      // 4. Create ShippingInfo (Unified)
+      // 4. 배송 정보 생성 (통합)
       const { shippingInfo } = createOrderDto;
       const newShippingInfo = queryRunner.manager.create(ShippingInfo, {
         orderId: savedOrder.orderId,
