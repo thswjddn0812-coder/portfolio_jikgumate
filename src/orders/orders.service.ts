@@ -96,6 +96,14 @@ export class OrdersService {
     });
   }
 
+  async findAllByUserId(userId: number) {
+    return await this.ordersRepository.find({
+      where: { userId },
+      relations: ['orderItems', 'orderItems.product', 'shippingInfo'],
+      order: { orderDate: 'DESC' },
+    });
+  }
+
   async findOne(id: number) {
     const order = await this.ordersRepository.findOne({
       where: { orderId: id },

@@ -43,6 +43,17 @@ export class OrdersController {
     return this.ordersService.findAll();
   }
 
+  @Get('my')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({
+    summary: '내 주문 내역 조회',
+    description: '로그인한 사용자의 주문 내역을 조회합니다.',
+  })
+  @ApiResponse({ status: 200, description: '내 주문 내역 조회 성공' })
+  findMyOrders(@Req() req: any) {
+    return this.ordersService.findAllByUserId(req.user.userId);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: '주문 상세 조회',
