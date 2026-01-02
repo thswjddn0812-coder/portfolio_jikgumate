@@ -38,8 +38,8 @@ export class OrdersController {
     description: '모든 주문 목록을 조회합니다.',
   })
   @ApiResponse({ status: 200, description: '주문 목록 조회 성공' })
-  findAll(@Req() req: any) {
-    return this.ordersService.findAll(req.user.userId);
+  findAll() {
+    return this.ordersService.findAll();
   }
 
   @Get(':id')

@@ -89,9 +89,8 @@ export class OrdersService {
     }
   }
 
-  async findAll(userId: number) {
+  async findAll() {
     return await this.ordersRepository.find({
-      where: { userId },
       relations: ['orderItems', 'orderItems.product', 'shippingInfo'],
       order: { orderDate: 'DESC' },
     });
