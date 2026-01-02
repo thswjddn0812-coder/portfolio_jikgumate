@@ -52,14 +52,16 @@ export class OrdersController {
   findOne(@Param('id') id: string) {
     return this.ordersService.findOne(+id);
   }
-
-  @Patch(':id')
+  @Patch(':id/status')
   @ApiOperation({
-    summary: '주문 수정',
-    description: '특정 주문의 정보를 수정합니다.',
+    summary: '주문 상태 수정',
+    description: '특정 주문의 상태를 수정합니다.',
   })
-  @ApiResponse({ status: 200, description: '주문 수정 성공' })
-  update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
+  @ApiResponse({ status: 200, description: '주문 상태 수정 성공' })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() updateOrderDto: UpdateOrderDto,
+  ) {
     return this.ordersService.update(+id, updateOrderDto);
   }
 
