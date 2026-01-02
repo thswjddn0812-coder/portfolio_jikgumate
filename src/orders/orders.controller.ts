@@ -21,6 +21,7 @@ import { Req } from '@nestjs/common';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   @ApiOperation({
     summary: '주문 생성 (통합)',
