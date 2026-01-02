@@ -48,6 +48,29 @@ export class ProductsController {
     return this.productsService.create(createProductDto);
   }
 
+  @Get('all')
+  @ApiOperation({
+    summary: '상품 간략 목록 조회',
+    description: '상품의 이미지, 가격, 한글명만 간략하게 조회합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '상품 간략 목록 조회 성공',
+    schema: {
+      example: [
+        {
+          productId: 1,
+          imageUrl: 'https://example.com/image.jpg',
+          price: 10000,
+          ko_name: '상품명',
+        },
+      ],
+    },
+  })
+  findAllSimple() {
+    return this.productsService.findAllSimple();
+  }
+
   @Get()
   @ApiOperation({
     summary: '상품 목록 조회',

@@ -430,8 +430,21 @@ export class ProductsService {
   create(createProductDto: CreateProductDto) {
     return 'This action adds a new product';
   }
+  async findAllSimple() {
+    const products = await this.productsRepository.find({
+      select: ['productId', 'imageUrl', 'priceUsd', 'nameKo'],
+    });
+
+    return products.map((product) => ({
+      productId: product.productId,
+      imageUrl: product.imageUrl,
+      price: parseFloat(product.priceUsd),
+      ko_name: product.nameKo,
+    }));
+  }
+
   findAll() {
-    return `This action returns all products`;
+    return this.productsRepository.find();
   }
   findOne(id: number) {
     return `This action returns a #${id} product`;
