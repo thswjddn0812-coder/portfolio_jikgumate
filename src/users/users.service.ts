@@ -82,4 +82,11 @@ export class UsersService {
       ],
     });
   }
+  async checkEmail(email: string): Promise<{ available: boolean }> {
+    const existingUser = await this.usersRepository.findOne({
+      where: { email },
+    });
+
+    return { available: !existingUser };
+  }
 }

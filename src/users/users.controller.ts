@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -60,6 +61,19 @@ export class UsersController {
   })
   findAll() {
     return this.usersService.findAll();
+  }
+
+  @Get('check-email')
+  @ApiOperation({
+    summary: '이메일 중복 확인',
+    description: '이메일 중복 여부를 확인합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '이메일 중복 확인 성공',
+  })
+  async checkEmail(@Query('email') email: string) {
+    return this.usersService.checkEmail(email);
   }
 
   @Get(':email')
