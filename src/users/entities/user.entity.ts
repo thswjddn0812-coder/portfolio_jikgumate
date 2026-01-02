@@ -3,16 +3,21 @@ import {
   Entity,
   Index,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Orders } from '../../orders/entities/order.entity';
 import { RefreshTokens } from '../../refresh-tokens/entities/refresh-token.entity';
+import { Carts } from '../../carts/entities/cart.entity';
 
 @Index('email', ['email'], { unique: true })
 @Entity('Users', { schema: 'JikguMate' })
 export class Users {
   @PrimaryGeneratedColumn({ type: 'int', name: 'user_id' })
   userId: number;
+
+  @OneToOne(() => Carts, (cart) => cart.user)
+  cart: Carts;
 
   @Column('varchar', { name: 'email', unique: true, length: 100 })
   email: string;

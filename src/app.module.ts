@@ -11,6 +11,7 @@ import { RefreshTokensModule } from './refresh-tokens/refresh-tokens.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { ConfigService } from '@nestjs/config';
+import { CartsModule } from './carts/carts.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ConfigService } from '@nestjs/config';
     ShippingInfoModule,
     RefreshTokensModule,
     AuthModule,
+    CartsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

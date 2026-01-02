@@ -105,11 +105,30 @@ export class OrdersService {
     return order;
   }
 
-  update(id: number, updateOrderDto: UpdateOrderDto) {
-    return `This action updates a #${id} order`;
+  async update(id: number, updateOrderDto: UpdateOrderDto) {
+    const order = await this.ordersRepository.findOne({
+      where: { orderId: id },
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    if (updateOrderDto.status) {
+      order.status = updateOrderDto.status;
+    }
+
+    await this.ordersRepository.save(order);
+    return order;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} order`;
+  async remove(id: number) {
+    const order = await this.ordersRepository.findOne({
+      where: { orderId: id },
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+    await this.ordersRepository.remove(order);
+    return { message: `Order #${id} deleted successfully` };
   }
 }

@@ -33,22 +33,10 @@ export class Orders {
   @Column('enum', {
     name: 'status',
     nullable: true,
-    enum: [
-      'PENDING',
-      'PURCHASED',
-      'ARRIVED_AT_WAREHOUSE',
-      'SHIPPING_START',
-      'DELIVERED',
-    ],
+    enum: ['PENDING', 'SHIPPING', 'DELIVERED'],
     default: 'PENDING',
   })
-  status:
-    | 'PENDING'
-    | 'PURCHASED'
-    | 'ARRIVED_AT_WAREHOUSE'
-    | 'SHIPPING_START'
-    | 'DELIVERED'
-    | null;
+  status: 'PENDING' | 'SHIPPING' | 'DELIVERED' | null;
 
   @Column('timestamp', {
     name: 'order_date',
