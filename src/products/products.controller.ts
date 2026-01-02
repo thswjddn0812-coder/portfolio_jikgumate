@@ -87,8 +87,8 @@ export class ProductsController {
     description: '특정 상품의 상세 정보를 조회합니다.',
   })
   @ApiResponse({ status: 200, description: '상품 상세 조회 성공' })
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+  async getProductById(@Param('id') id: string) {
+    return this.productsService.findById(+id);
   }
 
   @Patch(':id')

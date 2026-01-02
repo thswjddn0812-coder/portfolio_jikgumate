@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import axios from 'axios';
@@ -446,9 +446,24 @@ export class ProductsService {
   findAll() {
     return this.productsRepository.find();
   }
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  async findById(id: number) {
+    const product = await this.productsRepository.findOne({
+      where: { productId: id },
+    });
+
+    if (!product) {
+      throw new NotFoundException('상품을 찾을 수 없습니다.');
+    }
+
+    return {
+      productId: product.productId,
+      imageUrl: product.imageUrl,
+      price: parseFloat(product.priceUsd),
+      ko_name: product.nameKo,
+      category: product.category,
+    };
   }
+
   update(id: number, updateProductDto: UpdateProductDto) {
     return `This action updates a #${id} product`;
   }
