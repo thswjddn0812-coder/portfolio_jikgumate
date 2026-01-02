@@ -22,11 +22,11 @@ export class ProductsService {
       url = `https://${url}`;
     }
 
-    if (url.includes('aliexpress.com')) {
-      return this.crawlWithPuppeteer(url);
-    }
-    return this.crawlWithAxios(url);
+    // 모든 사이트를 Puppeteer로 크롤링 (Axios 차단 우회)
+    return this.crawlWithPuppeteer(url);
   }
+
+  // ... (analyzeAndCreate method remains unchanged)
 
   async analyzeAndCreate(url: string) {
     const info = await this.getProductInfo(url);
@@ -78,63 +78,59 @@ export class ProductsService {
 
     try {
       const page = await browser.newPage();
-
-      // 1. URL 정제 (불필요한 트래킹 파라미터 제거)
-      const cleanUrl = url.split('?')[0];
-
       await page.setViewport({ width: 1920, height: 1080 });
 
-      // 2. 헤더 추가 (Referer 및 Accept-Language)
+      // 1. 헤더 추가 (Referer 및 Accept-Language)
       await page.setExtraHTTPHeaders({
         'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
         Referer: 'https://www.google.com/',
       });
       await page.setUserAgent(this.USER_AGENT);
 
-      // 3. 쿠키 설정 (한국/원화) - 더욱 강력하게 설정
-      // aep_usuc_f: region=KR, site=kor, c_tp=KRW
-      // intl_locale: ko_KR
-      await page.setCookie(
-        {
-          name: 'aep_usuc_f',
-          value: 'site=kor&c_tp=KRW&region=KR&b_locale=ko_KR',
-          domain: '.aliexpress.com',
-        },
-        {
-          name: 'xman_us_f',
-          value: 'x_l=0&x_locale=ko_KR',
-          domain: '.aliexpress.com',
-        },
-        {
-          name: 'intl_locale',
-          value: 'ko_KR',
-          domain: '.aliexpress.com',
-        },
-      );
-
-      // 4. 리소스 차단 제거 (가끔 로딩 지연 원인이 됨)
-      // 5. 메인 페이지 방문 제거 (타임아웃 원인 제거)
+      // 2. 쿠키 설정 (알리익스프레스 및 아마존용)
+      if (url.includes('aliexpress.com')) {
+        await page.setCookie(
+          {
+            name: 'aep_usuc_f',
+            value: 'site=kor&c_tp=KRW&region=KR&b_locale=ko_KR',
+            domain: '.aliexpress.com',
+          },
+          {
+            name: 'xman_us_f',
+            value: 'x_l=0&x_locale=ko_KR',
+            domain: '.aliexpress.com',
+          },
+          { name: 'intl_locale', value: 'ko_KR', domain: '.aliexpress.com' },
+        );
+      } else if (url.includes('amazon')) {
+        await page.setCookie(
+          { name: 'i18n-prefs', value: 'KRW', domain: '.amazon.com' },
+          { name: 'lc-main', value: 'ko_KR', domain: '.amazon.com' },
+        );
+      }
 
       // 짧은 랜덤 대기
       await new Promise((r) => setTimeout(r, Math.random() * 1000 + 500));
 
-      // 6. 상품 페이지 이동
-      // 6. 상품 페이지 이동
-      // networkidle2는 타임아웃 발생 가능성이 높으므로 domcontentloaded로 변경
-      const response = await page.goto(cleanUrl, {
+      // 3. 페이지 이동
+      const response = await page.goto(url, {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
 
       // 주요 컨텐츠 로딩 대기
-      // 주요 컨텐츠 로딩 대기
-      // 주요 컨텐츠 로딩 대기 (속도 개선을 위해 타임아웃 1초로 단축, 실패해도 진행)
       try {
-        await page
-          .waitForSelector('script[type="application/ld+json"]', {
-            timeout: 1000,
-          })
-          .catch(() => {});
+        if (url.includes('amazon')) {
+          await page
+            .waitForSelector('#productTitle', { timeout: 2000 })
+            .catch(() => {});
+        } else {
+          await page
+            .waitForSelector('script[type="application/ld+json"]', {
+              timeout: 1000,
+            })
+            .catch(() => {});
+        }
       } catch (e) {}
 
       // 404 및 차단 확인
@@ -142,7 +138,7 @@ export class ProductsService {
       const pageTitle = await page.title();
 
       console.log(
-        `[Crawling Debug] Status: ${status}, Title: "${pageTitle}", URL: ${cleanUrl}`,
+        `[Crawling Debug] Status: ${status}, Title: "${pageTitle}", URL: ${url}`,
       );
 
       if (
@@ -150,16 +146,25 @@ export class ProductsService {
         pageTitle.includes('404') ||
         pageTitle.includes('Page Not Found')
       ) {
-        // 디버깅을 위해 에러 메시지에 타이틀 포함
-        throw new Error(`AliExpress returned 404. Page Title: ${pageTitle}`);
+        throw new Error(`Page returned 404. Title: ${pageTitle}`);
+      }
+
+      // Amazon 캡차/봇 탐지 페이지 확인
+      if (pageTitle.includes('Robot Check') || pageTitle.includes('Captcha')) {
+        throw new Error('Blocked by Bot Detection (Captcha)');
       }
 
       // 봇 탐지 우회를 위한 약간의 랜덤 대기
       await new Promise((r) => setTimeout(r, Math.random() * 2000 + 1000));
 
-      const data = await this.extractAliExpressData(page);
+      let data;
+      if (url.includes('aliexpress.com')) {
+        data = await this.extractAliExpressData(page);
+      } else {
+        data = await this.extractGeneralData(page);
+      }
 
-      return { ...data, url: cleanUrl };
+      return { ...data, url };
     } catch (error) {
       console.error('Puppeteer Crawling Error:', error);
       return {
@@ -291,7 +296,7 @@ export class ProductsService {
 
       for (const selector of priceSelectors) {
         const priceText = await page
-          .$eval(selector, (el) => el.innerText)
+          .$eval(selector, (el) => el.textContent)
           .catch(() => '');
         const extractedPrice = this.parsePrice(priceText);
         if (extractedPrice > 0) {
@@ -306,10 +311,10 @@ export class ProductsService {
       title = await page.title();
     }
 
-    // 5. Regex Search (Last Resort for Price) - 전체 텍스트에서 가격 패턴 검색
+    // 5. Regex Search (Last Resort for Price)
     if (!price) {
       try {
-        const bodyText = await page.$eval('body', (el) => el.innerText);
+        const bodyText = await page.$eval('body', (el) => el.textContent);
         // "100,000원", "₩100,000", "KRW 100,000" 패턴 검색
         const pricePatterns = [
           /₩\s*([\d,]+)/,
@@ -340,76 +345,76 @@ export class ProductsService {
     return { title: title?.trim(), price, image, desc: description?.trim() };
   }
 
-  private async crawlWithAxios(url: string) {
-    try {
-      const { data } = await axios.get(decodeURIComponent(url), {
-        headers: {
-          'User-Agent': this.USER_AGENT,
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-          'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-          Referer: 'https://www.google.com/',
-          // 아마존 등에서 한국/원화 설정을 강제하기 위한 쿠키
-          Cookie: 'i18n-prefs=KRW; lc-main=ko_KR; sp-cdn="L5Z9:KR";',
-        },
+  private async extractGeneralData(page: any) {
+    let title = '';
+    let price = 0;
+    let image = '';
+    let description = '';
+
+    // 1. Meta Tags (OG)
+    title = await page
+      .$eval('meta[property="og:title"]', (el) => el.content)
+      .catch(() => '');
+    image = await page
+      .$eval('meta[property="og:image"]', (el) => el.content)
+      .catch(() => '');
+    description = await page
+      .$eval('meta[property="og:description"]', (el) => el.content)
+      .catch(() => '');
+
+    if (!title) title = await page.title();
+
+    // 2. Amazon Specifics
+    if (page.url().includes('amazon')) {
+      const amzTitle = await page
+        .$eval('#productTitle', (el) => el.textContent)
+        .catch(() => '');
+      if (amzTitle) title = amzTitle;
+
+      const amzPriceText = await page.evaluate(() => {
+        return (
+          (document.querySelector('.a-price .a-offscreen') as HTMLElement)
+            ?.innerText ||
+          (document.querySelector('#priceblock_ourprice') as HTMLElement)
+            ?.innerText ||
+          (document.querySelector('#priceblock_dealprice') as HTMLElement)
+            ?.innerText ||
+          ''
+        );
       });
+      const amzPrice = this.parsePrice(amzPriceText);
+      if (amzPrice > 0) price = amzPrice;
 
-      const $ = cheerio.load(data);
-
-      const title =
-        $('meta[property="og:title"]').attr('content') || $('title').text();
-      let image = $('meta[property="og:image"]').attr('content');
-      const description = $('meta[property="og:description"]').attr('content');
-
-      // Amazon Image Fallback
-      if ((!image || image.includes('captcha')) && url.includes('amazon')) {
-        image =
-          $('#landingImage').attr('data-old-hires') ||
-          $('#landingImage').attr('src') ||
-          $('#imgBlkFront').attr('src') ||
-          $('.a-dynamic-image').first().attr('src');
+      if (!image) {
+        image = await page.evaluate(() => {
+          return (
+            document.querySelector('#landingImage')?.getAttribute('src') ||
+            document.querySelector('#imgBlkFront')?.getAttribute('src') ||
+            document.querySelector('.a-dynamic-image')?.getAttribute('src') ||
+            ''
+          );
+        });
       }
+    }
 
-      // Price Extraction Strategies
-      let priceText =
-        $('.product-detail__price-value').first().text() ||
-        $('.total_price').text() ||
-        $('.price_sect').text() ||
-        $('.price').first().text() ||
-        $('.amount').first().text();
-
-      // Amazon specific selectors
-      if (url.includes('amazon')) {
-        priceText =
-          $('input[name="priceValue"]').val() ||
-          $('#priceblock_ourprice').text() ||
-          $('#priceblock_dealprice').text() ||
-          $('.a-price .a-offscreen').first().text() ||
-          priceText;
-      }
-
-      // Fallback: finding price in description if not found in specific tags
-      if (!priceText && description) {
-        const matches = description.match(/[\d,]+/g);
-        if (matches && matches.length > 0) {
-          priceText = matches[matches.length - 1];
+    // 3. General Price Fallback (if not found specifically)
+    if (price === 0) {
+      const bodyText = await page.$eval('body', (el) => el.textContent);
+      // Simple regex for likely price patterns
+      const pricePatterns = [/₩\s*([\d,]+)/, /KRW\s*([\d,]+)/, /([\d,]+)\s*원/];
+      for (const pattern of pricePatterns) {
+        const match = bodyText.match(pattern);
+        if (match) {
+          const p = this.parsePrice(match[1]);
+          if (p > 0) {
+            price = p;
+            break;
+          }
         }
       }
-
-      return {
-        title: title?.trim(),
-        image,
-        price: this.parsePrice(priceText),
-        desc: description?.trim(),
-        url,
-      };
-    } catch (error) {
-      console.error('Axios Crawling Error:', error);
-      return {
-        error: '정보를 가져오는데 실패했습니다.',
-        detail: error.message,
-      };
     }
+
+    return { title: title?.trim(), price, image, desc: description?.trim() };
   }
 
   private parsePrice(text: string): number {
