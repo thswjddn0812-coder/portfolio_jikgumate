@@ -11,6 +11,9 @@ import { Repository, DataSource } from 'typeorm';
 import { OrderItems } from '../order-items/entities/order-item.entity';
 import { Products } from '../products/entities/product.entity';
 import { ShippingInfo } from '../shipping-info/entities/shipping-info.entity';
+import { Carts } from '../carts/entities/cart.entity';
+import { CartItems } from '../carts/entities/cart-item.entity';
+import { Users } from '../users/entities/user.entity';
 
 @Injectable()
 export class OrdersService {
@@ -23,6 +26,12 @@ export class OrdersService {
     private productsRepository: Repository<Products>,
     @InjectRepository(ShippingInfo)
     private shippingInfoRepository: Repository<ShippingInfo>,
+    @InjectRepository(Carts)
+    private cartsRepository: Repository<Carts>,
+    @InjectRepository(CartItems)
+    private cartItemsRepository: Repository<CartItems>,
+    @InjectRepository(Users)
+    private usersRepository: Repository<Users>,
     private dataSource: DataSource,
   ) {}
 
@@ -138,5 +147,77 @@ export class OrdersService {
     }
     await this.ordersRepository.remove(order);
     return { message: `Order #${id} deleted successfully` };
+  }
+
+  async createFromCart(userId: number, createOrderDto: CreateOrderDto) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      let totalAmount = 0;
+      const orderItemsToSave: Partial<OrderItems>[] = [];
+
+      // 1. 총액 계산 및 주문 항목 준비
+      for (const item of createOrderDto.items) {
+        const product = await queryRunner.manager.findOne(Products, {
+          where: { productId: item.productId },
+        });
+        if (!product) {
+          throw new NotFoundException(
+            `Product with ID ${item.productId} not found`,
+          );
+        }
+
+        const price = parseFloat(product.priceUsd);
+        totalAmount += price * item.quantity;
+
+        orderItemsToSave.push({
+          productId: item.productId,
+          quantity: item.quantity,
+        });
+      }
+
+      // 2. Orders 생성
+      const newOrder = queryRunner.manager.create(Orders, {
+        userId,
+        totalAmount: totalAmount.toFixed(2),
+        status: 'PENDING',
+      });
+      const savedOrder = await queryRunner.manager.save(Orders, newOrder);
+
+      // 3. OrderItems 생성 및 저장
+      for (const item of orderItemsToSave) {
+        await queryRunner.manager.save(OrderItems, {
+          ...item,
+          orderId: savedOrder.orderId,
+        });
+      }
+
+      // 4. 배송 정보 생성
+      const { shippingInfo } = createOrderDto;
+      const newShippingInfo = queryRunner.manager.create(ShippingInfo, {
+        orderId: savedOrder.orderId,
+        ...shippingInfo,
+      });
+      await queryRunner.manager.save(ShippingInfo, newShippingInfo);
+
+      // 5. 해당 유저의 장바구니(CartItems) 전체 삭제
+      const cart = await queryRunner.manager.findOne(Carts, {
+        where: { userId },
+      });
+
+      if (cart) {
+        await queryRunner.manager.delete(CartItems, { cartId: cart.cartId });
+      }
+
+      await queryRunner.commitTransaction();
+      return this.findOne(savedOrder.orderId);
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

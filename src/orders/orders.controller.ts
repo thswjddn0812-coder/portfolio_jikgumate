@@ -33,6 +33,25 @@ export class OrdersController {
     return this.ordersService.create(req.user.userId, createOrderDto);
   }
 
+  @UseGuards(AuthGuard('jwt'))
+  @Post('from-cart')
+  @ApiOperation({
+    summary: '장바구니에서 주문 생성',
+    description:
+      '상품 목록과 배송 정보를 입력받아 주문을 생성합니다. 주문 생성 후 해당 사용자의 장바구니가 자동으로 비워집니다.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: '주문 생성 성공 (장바구니 자동 삭제)',
+  })
+  @ApiResponse({
+    status: 404,
+    description: '상품을 찾을 수 없습니다.',
+  })
+  createFromCart(@Req() req: any, @Body() createOrderDto: CreateOrderDto) {
+    return this.ordersService.createFromCart(req.user.userId, createOrderDto);
+  }
+
   @Get()
   @ApiOperation({
     summary: '주문 목록 조회',
