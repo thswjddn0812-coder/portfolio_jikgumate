@@ -51,6 +51,14 @@ export class CartsController {
     summary: '장바구니 아이템 수정',
     description: '장바구니에 담긴 상품의 수량을 수정합니다.',
   })
+  @ApiResponse({
+    status: 200,
+    description: '장바구니 아이템 수량 수정 성공',
+  })
+  @ApiResponse({
+    status: 404,
+    description: '장바구니 아이템을 찾을 수 없습니다.',
+  })
   updateCartItem(
     @Req() req: any,
     @Param('cartItemId') cartItemId: string,
@@ -67,6 +75,14 @@ export class CartsController {
   @ApiOperation({
     summary: '장바구니 아이템 삭제',
     description: '장바구니에서 특정 상품을 제거합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '장바구니 아이템 삭제 성공',
+  })
+  @ApiResponse({
+    status: 404,
+    description: '장바구니 아이템을 찾을 수 없습니다.',
   })
   removeCartItem(@Req() req: any, @Param('cartItemId') cartItemId: string) {
     return this.cartsService.removeCartItem(req.user.userId, +cartItemId);
